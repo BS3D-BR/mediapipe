@@ -5,6 +5,14 @@ title: Home
 nav_order: 1
 ---
 
+# BS3D MediaPipe Build
+
+Este repositório é um fork de:
+https://github.com/google-ai-edge/mediapipe
+
+Veja detalhes em:
+[README-bs3d.md](README-bs3d.md)
+
 ----
 
 **Attention:** *We have moved to
