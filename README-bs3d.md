@@ -60,3 +60,106 @@ O build original muitas vezes busca bibliotecas estáticas (`.a`) em caminhos fi
 
 > **Nota:** Este build foi otimizado para rodar com o compilador `Clang` e utiliza o `Manylinux 2.28` para garantir que o binário funcione em sistemas Ubuntu modernos e outros derivados do RHEL/Debian em ARM64.
 
+
+# ⏫ Atualizando a partir do repositório upstream (MediaPipe)
+
+Este repositório é um fork de  
+https://github.com/google-ai-edge/mediapipe
+
+Periodicamente pode ser necessário atualizar o código do MediaPipe
+mantendo os arquivos adicionais deste repositório (scripts de build,
+Dockerfiles, etc.).
+
+## Configurar o upstream (uma única vez)
+
+Se o repositório original ainda não estiver configurado como `upstream`,
+adicione-o:
+
+```bash
+git remote add upstream https://github.com/google-ai-edge/mediapipe.git
+````
+
+Verifique os remotes configurados:
+
+```bash
+git remote -v
+```
+
+O esperado é algo como:
+
+```
+origin    https://github.com/BS3D-BR/mediapipe.git
+upstream  https://github.com/google-ai-edge/mediapipe.git
+```
+
+---
+
+## Atualizar para a versão mais recente do upstream
+
+Primeiro obtenha as atualizações do MediaPipe:
+
+```bash
+git fetch upstream
+```
+
+Depois integre as mudanças no branch principal deste repositório
+(`main` ou `master`, dependendo da configuração):
+
+```bash
+git checkout main
+git merge upstream/master
+```
+
+Resolva eventuais conflitos e então envie para o repositório da organização:
+
+```bash
+git push origin main
+```
+
+---
+
+### Atualizar para uma *tag* específica do MediaPipe
+
+Caso seja necessário alinhar este fork a uma versão específica do
+MediaPipe (por exemplo `v0.10.32`):
+
+Primeiro atualize as referências do upstream:
+
+```bash
+git fetch upstream --tags
+```
+
+Depois faça o merge da tag desejada:
+
+```bash
+git checkout main
+git merge v0.10.32
+```
+
+ou explicitamente:
+
+```bash
+git merge upstream/tags/v0.10.32
+```
+
+Em seguida resolva eventuais conflitos e envie as mudanças:
+
+```bash
+git push origin main
+```
+
+---
+
+### Observações
+
+* Arquivos adicionais deste fork (como Dockerfiles, scripts ou wheels)
+  permanecem preservados durante o merge.
+* Conflitos podem ocorrer caso o upstream modifique arquivos que também
+  tenham sido alterados neste repositório.
+* Recomenda-se sempre revisar o resultado do merge antes de publicar as
+  mudanças.
+
+```
+
+Se quiser, também posso te mostrar **um fluxo ainda mais seguro usado em forks grandes**, que cria um branch separado `upstream-sync` para testar o merge antes de atualizar o `main`. Isso evita quebrar o repositório quando o upstream muda algo grande (o que acontece bastante no MediaPipe).
+```
