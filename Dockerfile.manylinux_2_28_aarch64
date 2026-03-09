@@ -121,7 +121,7 @@ RUN echo "build --action_env=CC=/usr/bin/clang" >> .bazelrc && \
     echo "# Disable private Google repository, ODML converter." >> .bazelrc && \
     echo "build --define=ENABLE_ODML_CONVERTER=0" >> .bazelrc && \
     sed -i 's/build --jobs 128/build --jobs 16/' .bazelrc && \
-    # CORREÇÃO DO OPENCV: Usando glob para encontrar os .a em lib ou lib64
+    # OpenCV BUILD: Glob para suportar lib64
     echo 'cc_library(name = "opencv", srcs = glob(["local/lib/libopencv_*.a", "local/lib64/libopencv_*.a"]), hdrs = glob(["local/include/opencv4/opencv2/**/*.h*"]), includes = ["local/include/opencv4/"], linkstatic = 1, visibility = ["//visibility:public"])' > third_party/opencv_linux.BUILD && \
     sed -i "s|bazel_command.append('--define=OPENCV=source')|pass|g" setup.py
 
@@ -139,17 +139,16 @@ RUN sed -i '/genai\/converter/d' mediapipe/tasks/c/BUILD && \
     sed -i "s/ENABLE_ODML_CONVERTER=1/ENABLE_ODML_CONVERTER=0/g" setup.py && \
     rm -rf mediapipe/tasks/c/genai
 
-# Analytics fake build
+# --- ANALYTICS FAKE BUILD (Solução Unificada) ---
 RUN mkdir -p mediapipe/util/analytics && \
-printf 'package(default_visibility = ["//visibility:public"])\n\ncc_library(\n    name = "mediapipe_logging_enums_cc_proto",\n    hdrs = [],\n)\n\ncc_library(\n    name = "mediapipe_log_extension_cc_proto",\n    hdrs = [],\n)\n' \
-> mediapipe/util/analytics/BUILD
-RUN sed -i 's|#include "mediapipe/util/analytics/mediapipe_log_extension.pb.h"|//|g' \
-    mediapipe/tasks/cc/core/logging/logging_client.h
-RUN sed -i '/\/\/mediapipe\/util\/analytics:mediapipe_log_extension_cc_proto/d' \
-    mediapipe/tasks/cc/core/BUILD
-RUN mkdir -p mediapipe/util/analytics && \
-    touch mediapipe/util/analytics/mediapipe_log_extension.pb.h
+printf 'package(default_visibility = ["//visibility:public"])\ncc_library(name = "mediapipe_logging_enums_cc_proto", hdrs = ["mediapipe_logging_enums.pb.h"])\ncc_library(name = "mediapipe_log_extension_cc_proto", hdrs = ["mediapipe_log_extension.pb.h"])\n' \
+> mediapipe/util/analytics/BUILD && \
+printf '#ifndef MEDIAPIPE_ANALYTICS_STUB_H_\n#define MEDIAPIPE_ANALYTICS_STUB_H_\nnamespace logs { namespace proto { namespace mediapipe { enum Platform { PLATFORM_UNKNOWN = 0 }; class MediaPipeLogExtension {}; } } }\n#endif' \
+> mediapipe/util/analytics/mediapipe_logging_enums.pb.h && \
+cp mediapipe/util/analytics/mediapipe_logging_enums.pb.h mediapipe/util/analytics/mediapipe_log_extension.pb.h
 
+# Nota: Removidos os comandos 'sed' que comentavam includes ou deletavam dependências de analytics.
+# Isso permite que o Bazel encontre os stubs acima através das dependências normais do projeto.
 
 RUN --mount=type=cache,target=/root/.cache/bazel \
     ln -sf $PYTHON_BIN /usr/bin/python && \
