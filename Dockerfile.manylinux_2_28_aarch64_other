@@ -1,0 +1,227 @@
+# Copyright 2025 The MediaPipe Authors.
+
+FROM quay.io/pypa/manylinux_2_28_aarch64
+
+ARG MEDIAPIPE_DISABLE_GPU=1
+ENV MEDIAPIPE_DISABLE_GPU=${MEDIAPIPE_DISABLE_GPU}
+
+RUN yum install -y java-21-openjdk-devel zip
+
+# Compile Bazel 7.4.1
+#WORKDIR /tmp/bazel_build
+#ADD https://github.com/bazelbuild/bazel/releases/download/7.4.1/bazel-7.4.1-dist.zip bazel.zip
+#RUN unzip bazel.zip
+#RUN rm -f bazel.zip
+#ENV PATH="/opt/python/cp36-cp36m/bin:${PATH}"
+#ENV EXTRA_BAZEL_ARGS="--host_javabase=@local_jdk//:jdk"
+#ENV BAZEL_LINKLIBS=-lm:-lstdc++
+#RUN ./compile.sh
+#RUN cp /tmp/bazel_build/output/bazel /bin/bazel
+
+# Install Bazel 7.4.1 (precompiled)
+RUN curl -L https://github.com/bazelbuild/bazel/releases/download/7.4.1/bazel-7.4.1-linux-arm64 \
+    -o /usr/bin/bazel && chmod +x /usr/bin/bazel
+
+ENV PATH="/opt/python/cp36-cp36m/bin:${PATH}"
+ENV EXTRA_BAZEL_ARGS="--host_javabase=@local_jdk//:jdk"
+ENV BAZEL_LINKLIBS=-lm:-lstdc++
+
+
+# Install Clang / LLVM
+RUN --mount=type=cache,target=/var/cache/dnf dnf install -y wget gcc-c++ clang clang-libs clang-devel lld && dnf clean all
+#RUN --mount=type=cache,target=/var/cache/dnf dnf install -y wget gcc-c++ && dnf clean all
+#RUN curl -L https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/clang+llvm-18.1.8-aarch64-linux-gnu.tar.xz \
+#    | tar -xJ -C /opt \
+# && mv /opt/clang+llvm-18.1.8-aarch64-linux-gnu /opt/llvm18 \
+# && ln -s /opt/llvm18/bin/clang /usr/bin/clang-18 \
+# && ln -s /opt/llvm18/bin/clang++ /usr/bin/clang++-18 \
+# && ln -s /opt/llvm18/bin/llvm-config /usr/bin/llvm-config-18 \
+# && ln -s /opt/llvm18/bin/lld /usr/bin/lld-18
+#ENV PATH=/opt/clang+llvm-18.1.8-aarch64-linux-gnu/bin:$PATH
+
+# Compile LLVM (disabled — using repo binaries instead)
+#RUN mkdir /tmp/llvm-project && wget -qO - https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-18.1.8.tar.gz | tar -xz -C /tmp/llvm-project --strip-components 1 && \
+#    mkdir /tmp/llvm-project/build && cd /tmp/llvm-project/build && cmake -DLLVM_ENABLE_PROJECTS='clang;lld' -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/lib/llvm-18/ ../llvm && \
+#    make -j$(nproc) && make -j$(nproc) install && rm -rf /tmp/llvm-project
+
+
+# Install OpenGL (NOT needed when MEDIAPIPE_DISABLE_GPU=1)
+#RUN yum install -y mesa-libGL mesa-libGL-devel mesa-libEGL mesa-libEGL-devel
+#RUN yum install -y mesa-libGLES-devel
+
+
+# Install Java, zip, emacs, and portaudio.
+# Java is already installed earlier.
+# emacs is unnecessary for builds.
+# portaudio is only needed for MediaPipe audio examples.
+RUN yum install -y epel-release && yum install -y \
+    java-21-openjdk \
+    java-21-openjdk-devel \
+    zip
+    #emacs \
+    #portaudio-devel
+
+
+# Copy Protobuf Compiler binary
+ARG PROTOC_ZIP=protoc-25.1-linux-aarch_64.zip
+RUN curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v25.1/$PROTOC_ZIP
+RUN unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+RUN unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+RUN rm -f $PROTOC_ZIP
+
+
+# Install OpenCV
+
+RUN mkdir -p /usr/local/lib /usr/local/include/opencv4
+
+# Compile OpenCV (disabled — replaced by prebuilt static libs)
+RUN yum install -y cmake
+WORKDIR /tmp/bazel_build
+RUN git clone https://github.com/opencv/opencv.git
+RUN mkdir opencv/release
+RUN cd /tmp/bazel_build/opencv && git checkout 4.10.0 && cd release && cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DCMAKE_C_COMPILER=/usr/bin/clang \
+    -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DBUILD_LIST=core,imgproc,imgcodecs \
+    -DBUILD_opencv_world=OFF \
+    -DBUILD_TESTS=OFF \
+    -DBUILD_PERF_TESTS=OFF \
+    -DBUILD_EXAMPLES=OFF \
+    -DBUILD_opencv_apps=OFF \
+    -DBUILD_opencv_ts=OFF \
+    -DWITH_IPP=OFF \
+    -DWITH_ITT=OFF \
+    -DWITH_TBB=OFF \
+    -DWITH_OPENMP=OFF \
+    -DWITH_OPENCL=OFF \
+    -DWITH_OPENGL=OFF \
+    -DWITH_V4L=OFF \
+    -DWITH_FFMPEG=OFF \
+    -DWITH_GSTREAMER=OFF \
+    -DWITH_EIGEN=ON \
+    -DWITH_PTHREADS=ON \
+    -DWITH_PTHREADS_PF=ON \
+    -DCV_ENABLE_INTRINSICS=ON \
+    -DENABLE_NEON=ON
+#    -DCMAKE_C_COMPILER=/usr/bin/clang \
+#    -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+#    -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_INSTALL_PREFIX=/usr/local \
+#    -DBUILD_SHARED_LIBS=OFF -DBUILD_LIST=imgproc,core,imgcodecs \
+#    -DWITH_ITT=OFF -DWITH_IPP=OFF -DBUILD_EXAMPLES=OFF \
+#    -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_opencv_ts=OFF \
+#    -DCV_ENABLE_INTRINSICS=ON -DWITH_EIGEN=ON -DWITH_PTHREADS=ON \
+#    -DWITH_PTHREADS_PF=ON -DENABLE_NEON=ON
+#RUN cd /tmp/bazel_build/opencv/release && make -j 16 && make install
+RUN --mount=type=cache,target=/tmp/opencv-build \
+    cd /tmp/bazel_build/opencv/release && \
+    make -j$(nproc) && \
+    make install
+
+COPY . /mediapipe/
+WORKDIR /mediapipe
+
+COPY eigen-4c38131a16803130b66266a912029504f2cf23cd.tar.gz /tmp/eigen.tar.gz
+#RUN mkdir -p /root/.cache/bazel/_bazel_root/eigen && \
+#    tar -xzf /tmp/eigen.tar.gz -C /root/.cache/bazel/_bazel_root/eigen
+RUN mkdir -p /opt/eigen && \
+    tar -xzf /tmp/eigen.tar.gz -C /opt/eigen --strip-components=1 && \
+    rm /tmp/eigen.tar.gz
+#RUN awk '/^http_archive\(/ {block=$0 ORS; in_block=1; skip=0; next} \
+#in_block {block=block $0 ORS; if ($0 ~ /name *= *"eigen"/) skip=1; if ($0 ~ /^\)/) {if (!skip) printf "%s", block; in_block=0}; next} \
+#{print}' WORKSPACE > WORKSPACE.new && mv WORKSPACE.new WORKSPACE
+RUN cat <<'EOF' > /opt/eigen/BUILD.bazel
+package(default_visibility = ["//visibility:public"])
+
+# FIXME: something isn't right here, the build process doesn't find eigen. This was fixed in the other dockerfile.
+
+cc_library(
+    name = "eigen3",
+    hdrs = glob([
+        "Eigen/**/*.h",
+        "unsupported/Eigen/**/*.h",
+    ]),
+    includes = ["."],
+)
+
+alias(
+    name = "eigen",
+    actual = ":eigen3",
+)
+EOF
+RUN echo 'workspace(name = "eigen")' > /opt/eigen/WORKSPACE
+#RUN printf '\nnew_local_repository(\n\
+#    name = "eigen",\n\
+#    path = "/opt/eigen",\n\
+#    build_file_content = "cc_library(name = \\"eigen\\", hdrs = glob([\\"Eigen/**/*.h\\", \\"unsupported/Eigen/**/*.h\\"]), includes = [\\".\\"], visibility=[\\"//visibility:public\\"])"\n\
+#)\n' >> WORKSPACE
+
+
+#RUN yum install -y eigen3-devel
+#RUN awk '/^http_archive\(/ {block=$0 ORS; in_block=1; skip=0; next} \
+#in_block {block=block $0 ORS; if ($0 ~ /name *= *"eigen"/) skip=1; if ($0 ~ /^\)/) {if (!skip) printf "%s", block; in_block=0}; next} \
+#{print}' WORKSPACE > WORKSPACE.new && mv WORKSPACE.new WORKSPACE
+#RUN printf '\nnew_local_repository(\n\
+#    name = "eigen",\n\
+#    path = "/usr/include/eigen3",\n\
+#    build_file_content = "cc_library(name = \\"eigen3\\", hdrs = glob([\\"**/*.h\\"]), includes = [\\".\\"], visibility=[\\"//visibility:public\\"])"\n\
+#)\n' >> WORKSPACE
+
+# Set version number
+RUN export MP_VERSION_NUMBER=$(awk '/MEDIAPIPE_FULL_VERSION/ {split($0, a, "="); print a[2]}' mediapipe/version.bzl | sed 's/[" ]//g') && \
+    sed -i "s/__version__ = 'dev'/__version__ = '${MP_VERSION_NUMBER}'/g" setup.py
+
+
+# Set build flags for MediaPipe and OpenCV.
+RUN echo "build --action_env=CC=/usr/bin/clang" >> .bazelrc && \
+    echo "build --action_env=CXX=/usr/bin/clang++" >> .bazelrc && \
+#    echo "build --copt=-I/usr/include/eigen3" >> .bazelrc && \
+    echo "build --define=MEDIAPIPE_DISABLE_GPU=1" >> .bazelrc && \
+    echo "build --define=MEDIAPIPE_DISABLE_XNNPACK=1" >> .bazelrc && \
+    echo "build --copt=-march=armv8-a" >> .bazelrc && \
+    echo "build --override_repository=eigen=/opt/eigen" >> .bazelrc && \
+#    echo "build --copt=-I/opt/eigen" >> .bazelrc && \
+#    echo "build --cxxopt=-I/opt/eigen" >> .bazelrc && \
+    echo "build --copt=-DEIGEN_MPL2_ONLY" >> .bazelrc && \
+    echo "# Disable private Google repository, ODML converter." >> .bazelrc && \
+    echo "build --define=ENABLE_ODML_CONVERTER=0" >> .bazelrc && \
+    sed -i 's/build --jobs 128/build --jobs 16/' .bazelrc && \
+    echo 'cc_library(name = "opencv", srcs = ["local/lib/libopencv_imgproc.a", "local/lib/libopencv_core.a"],hdrs = glob(["local/include/opencv4/opencv2/**/*.h*"]), includes = ["local/include/opencv4/"], linkstatic = 1, visibility = ["//visibility:public"])' > third_party/opencv_linux.BUILD && \
+    sed -i "s|bazel_command.append('--define=OPENCV=source')|pass|g" setup.py
+
+
+# Apply diff to reduce the number of OpenCV dependencies.
+# RUN patch -p1 < mediapipe_python_build.diff
+
+
+ARG PYTHON_BIN="/opt/python/cp312-cp312/bin/python3.12"
+ENV HERMETIC_PYTHON_VERSION=3.12
+ENV BAZELISK_HOME=/bazel-cache
+RUN mkdir -p /bazel-cache
+
+RUN $PYTHON_BIN -m pip install --upgrade pip setuptools
+#RUN $PYTHON_BIN -m pip install wheel "numpy<2" auditwheel torch pyaudio
+RUN --mount=type=cache,target=/root/.cache/pip $PYTHON_BIN -m pip install wheel "numpy<2" auditwheel torch
+
+RUN sed -i '/genai\/converter/d' mediapipe/tasks/c/BUILD && \
+    sed -i '/genai\/bundler/d' mediapipe/tasks/c/BUILD && \
+    sed -i "s/ENABLE_ODML_CONVERTER=1/ENABLE_ODML_CONVERTER=0/g" setup.py && \
+    rm -rf mediapipe/tasks/c/genai
+
+# Analytics fake build
+RUN mkdir -p mediapipe/util/analytics && \
+printf 'package(default_visibility = ["//visibility:public"])\n\ncc_library(\n    name = "mediapipe_logging_enums_cc_proto",\n    hdrs = [],\n)\n\ncc_library(\n    name = "mediapipe_log_extension_cc_proto",\n    hdrs = [],\n)\n' \
+> mediapipe/util/analytics/BUILD
+
+
+RUN --mount=type=cache,target=/root/.cache/bazel \
+    ln -sf $PYTHON_BIN /usr/bin/python && \
+    ln -sf $PYTHON_BIN /usr/bin/python3 && \
+    $PYTHON_BIN setup.py bdist_wheel clean --all
+
+RUN auditwheel repair dist/*-cp312-cp312-linux_aarch64.whl
+
+
+RUN mkdir /wheelhouse/ && cp dist/* /wheelhouse/
