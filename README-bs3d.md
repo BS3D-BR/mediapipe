@@ -1,6 +1,6 @@
 # MediaPipe Build for aarch64 (Manylinux 2.28)
 
-Este repositório contém a configuração necessária para realizar o build do **MediaPipe v0.10.32** em arquitetura **aarch64** (ARM64), utilizando como base o padrão Manylinux 2.28 para garantir compatibilidade com diversas distribuições Linux.
+Este repositório contém a configuração necessária para realizar o build do **MediaPipe v0.10.32** (e possivelmente posteriores) em arquitetura **aarch64** (ARM64), utilizando como base o padrão Manylinux 2.28 para garantir compatibilidade com diversas distribuições Linux.
 
 ## 🚀 Por que este build é especial?
 

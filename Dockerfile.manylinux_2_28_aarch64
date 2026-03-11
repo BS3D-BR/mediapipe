@@ -71,7 +71,11 @@ RUN cd /tmp/bazel_build/opencv && git checkout 4.10.0 && cd release && cmake .. 
 RUN --mount=type=cache,target=/tmp/opencv-build \
     cd /tmp/bazel_build/opencv/release && \
     make -j$(nproc) && \
-    make install
+    make install && \
+    # PULO DO GATO: Encontra bibliotecas de aceleração ARM (como carotene) 
+    # que o 'make install' às vezes esquece e as copia para o local correto.
+    # Copia TODAS as libs .a (incluindo as de 3rdparty) para um local que o Bazel mapeia facilmente.
+    find /usr/local -name "*.a" -exec cp -v {} /usr/local/lib/ \;
 
 COPY . /mediapipe/
 WORKDIR /mediapipe
@@ -120,9 +124,21 @@ RUN echo "build --action_env=CC=/usr/bin/clang" >> .bazelrc && \
     echo "build --copt=-DEIGEN_MPL2_ONLY" >> .bazelrc && \
     echo "# Disable private Google repository, ODML converter." >> .bazelrc && \
     echo "build --define=ENABLE_ODML_CONVERTER=0" >> .bazelrc && \
-    sed -i 's/build --jobs 128/build --jobs 16/' .bazelrc && \
+    sed -i 's/build --jobs 128/build --jobs 16/' .bazelrc
     # OpenCV BUILD: Glob para suportar lib64
-    echo 'cc_library(name = "opencv", srcs = glob(["local/lib/libopencv_*.a", "local/lib64/libopencv_*.a"]), hdrs = glob(["local/include/opencv4/opencv2/**/*.h*"]), includes = ["local/include/opencv4/"], linkstatic = 1, visibility = ["//visibility:public"])' > third_party/opencv_linux.BUILD && \
+    #echo 'cc_library(name = "opencv", srcs = glob(["local/lib/*.a", "local/lib64/*.a"]), hdrs = glob(["local/include/opencv4/opencv2/**/*.h*"]), includes = ["local/include/opencv4/"], linkstatic = 1, visibility = ["//visibility:public"])' > third_party/opencv_linux.BUILD && \
+
+# OpenCV fix: correct paths (all libs under lib + lib64) and force symbols to be included
+#    echo 'cc_library(name = "opencv", srcs = glob(["local/lib/**/*.a", "local/lib64/**/*.a"]), hdrs = glob(["local/include/opencv4/opencv2/**/*.h*"]), includes = ["local/include/opencv4/"], linkstatic = 1, visibility = ["//visibility:public"])' > third_party/opencv_linux.BUILD && \
+RUN echo 'cc_library( \
+    name = "opencv", \
+    srcs = glob(["local/lib/**/*.a", "local/lib64/**/*.a"]), \
+    hdrs = glob(["local/include/opencv4/opencv2/**/*.h*"]), \
+    includes = ["local/include/opencv4/"], \
+    linkopts = ["-Wl,--whole-archive", "-Wl,--no-whole-archive", "-lstdc++", "-lm"], \
+    linkstatic = 1, \
+    visibility = ["//visibility:public"] \
+)' > third_party/opencv_linux.BUILD && \
     sed -i "s|bazel_command.append('--define=OPENCV=source')|pass|g" setup.py
 
 
@@ -147,14 +163,17 @@ printf '#ifndef MEDIAPIPE_ANALYTICS_STUB_H_\n#define MEDIAPIPE_ANALYTICS_STUB_H_
 > mediapipe/util/analytics/mediapipe_logging_enums.pb.h && \
 cp mediapipe/util/analytics/mediapipe_logging_enums.pb.h mediapipe/util/analytics/mediapipe_log_extension.pb.h
 
-# Nota: Removidos os comandos 'sed' que comentavam includes ou deletavam dependências de analytics.
-# Isso permite que o Bazel encontre os stubs acima através das dependências normais do projeto.
 
+# Final steps
 RUN --mount=type=cache,target=/root/.cache/bazel \
     ln -sf $PYTHON_BIN /usr/bin/python && \
     ln -sf $PYTHON_BIN /usr/bin/python3 && \
-    $PYTHON_BIN setup.py bdist_wheel clean --all
+    # 1. Gera o wheel (removido o clean --all para permitir inspeção se necessário) \
+    $PYTHON_BIN setup.py bdist_wheel && \
+    # 2. Repara o wheel colocando o resultado direto na pasta /wheelhouse final \
+    mkdir -p /wheelhouse && \
+    auditwheel repair dist/*.whl -w /wheelhouse/
 
-RUN auditwheel repair dist/*-cp312-cp312-linux_aarch64.whl
+# Opcional: remover o wheel original para não confundir
+RUN rm -rf dist/
 
-RUN mkdir /wheelhouse/ && cp dist/* /wheelhouse/
