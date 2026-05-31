@@ -158,8 +158,3 @@ git push origin main
   tenham sido alterados neste repositório.
 * Recomenda-se sempre revisar o resultado do merge antes de publicar as
   mudanças.
-
-```
-
-Se quiser, também posso te mostrar **um fluxo ainda mais seguro usado em forks grandes**, que cria um branch separado `upstream-sync` para testar o merge antes de atualizar o `main`. Isso evita quebrar o repositório quando o upstream muda algo grande (o que acontece bastante no MediaPipe).
-```
