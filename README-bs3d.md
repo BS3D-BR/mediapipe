@@ -2,6 +2,10 @@
 
 Este repositório contém a configuração necessária para realizar o build do **MediaPipe v0.10.32** (e possivelmente posteriores) em arquitetura **aarch64** (ARM64), utilizando como base o padrão Manylinux 2.28 para garantir compatibilidade com diversas distribuições Linux.
 
+## Observação inicial
+
+As últimas versões do MediaPipe 0.10.xx não tiveram builds oficiais disponibilizados em ARM64. Contudo, a partir das versões 1.x.x, as builds para ARM64 voltaram a ser disponibilizadas no PyPI. Este repositório continua sendo útil para quem deseja compilar versões 0.10.xx ou caso builds oficiais para ARM64 deixem novamente de ser oferecidas.
+
 ## 🚀 Por que este build é especial?
 
 Realizar o build do MediaPipe em ARM não é uma tarefa trivial. Portamos o `Dockerfile.manylinux_2_28_x86_64` original para a arquitetura **aarch64** e aplicamos correções críticas em dependências que normalmente falham em ambientes de cross-compilação ou servidores ARM.
