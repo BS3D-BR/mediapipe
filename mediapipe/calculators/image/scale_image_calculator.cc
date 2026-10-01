@@ -15,16 +15,20 @@
 // This Calculator takes an ImageFrame and scales it appropriately.
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
+#include "absl/types/span.h"
 #include "libyuv/scale.h"
+#include "libyuv/video_common.h"
 #include "mediapipe/calculators/image/scale_image_calculator.pb.h"
 #include "mediapipe/calculators/image/scale_image_utils.h"
 #include "mediapipe/framework/calculator_framework.h"
@@ -256,13 +260,13 @@ ScaleImageCalculator::ScaleImageCalculator() {}
 ScaleImageCalculator::~ScaleImageCalculator() {}
 
 absl::Status ScaleImageCalculator::InitializeFrameInfo(CalculatorContext* cc) {
-  MP_RETURN_IF_ERROR(
+  ABSL_RETURN_IF_ERROR(
       scale_image::FindCropDimensions(input_width_, input_height_,  //
                                       options_.min_aspect_ratio(),  //
                                       options_.max_aspect_ratio(),  //
                                       &crop_width_, &crop_height_,  //
                                       &col_start_, &row_start_));
-  MP_RETURN_IF_ERROR(
+  ABSL_RETURN_IF_ERROR(
       scale_image::FindOutputDimensions(crop_width_, crop_height_,         //
                                         options_.target_width(),           //
                                         options_.target_height(),          //
@@ -270,8 +274,8 @@ absl::Status ScaleImageCalculator::InitializeFrameInfo(CalculatorContext* cc) {
                                         options_.preserve_aspect_ratio(),  //
                                         options_.scale_to_multiple_of(),   //
                                         &output_width_, &output_height_));
-  MP_RETURN_IF_ERROR(FindInterpolationAlgorithm(options_.algorithm(),
-                                                &interpolation_algorithm_));
+  ABSL_RETURN_IF_ERROR(FindInterpolationAlgorithm(options_.algorithm(),
+                                                  &interpolation_algorithm_));
   if (interpolation_algorithm_ == -1 &&
       (output_width_ > crop_width_ || output_height_ > crop_height_)) {
     output_width_ = crop_width_;
@@ -292,7 +296,7 @@ absl::Status ScaleImageCalculator::InitializeFrameInfo(CalculatorContext* cc) {
   if (!header_sent_ && cc->Outputs().UsesTags() &&
       cc->Outputs().HasTag("VIDEO_HEADER")) {
     header_sent_ = true;
-    auto header = absl::make_unique<VideoHeader>();
+    auto header = std::make_unique<VideoHeader>();
     *header = input_video_header_;
     header->width = output_width_;
     header->height = output_height_;
@@ -331,7 +335,7 @@ absl::Status ScaleImageCalculator::Open(CalculatorContext* cc) {
   bool has_override_options = cc->Inputs().HasTag("OVERRIDE_OPTIONS");
 
   if (!has_override_options) {
-    MP_RETURN_IF_ERROR(InitializeFromOptions());
+    ABSL_RETURN_IF_ERROR(InitializeFromOptions());
   }
 
   if (!cc->Inputs().Get(input_data_id_).Header().IsEmpty()) {
@@ -385,8 +389,8 @@ absl::Status ScaleImageCalculator::Open(CalculatorContext* cc) {
     if (input_width_ > 0 && input_height_ > 0 &&
         input_format_ != ImageFormat::UNKNOWN &&
         output_format_ != ImageFormat::UNKNOWN) {
-      MP_RETURN_IF_ERROR(ValidateImageFormats());
-      MP_RETURN_IF_ERROR(InitializeFrameInfo(cc));
+      ABSL_RETURN_IF_ERROR(ValidateImageFormats());
+      ABSL_RETURN_IF_ERROR(InitializeFrameInfo(cc));
       std::unique_ptr<VideoHeader> output_header(new VideoHeader());
       *output_header = input_video_header_;
       output_header->format = output_format_;
@@ -463,6 +467,9 @@ absl::Status ScaleImageCalculator::ValidateImageFormats() const {
 
 absl::Status ScaleImageCalculator::ValidateImageFrame(
     CalculatorContext* cc, const ImageFrame& image_frame) {
+  if (image_frame.Width() == 0 || image_frame.Height() == 0) {
+    return absl::InvalidArgumentError("Input image frame is empty.");
+  }
   if (!has_header_) {
     if (input_width_ != image_frame.Width() ||
         input_height_ != image_frame.Height() ||
@@ -483,9 +490,9 @@ absl::Status ScaleImageCalculator::ValidateImageFrame(
       } else {
         output_format_ = input_format_;
       }
-      MP_RETURN_IF_ERROR(InitializeFrameInfo(cc));
+      ABSL_RETURN_IF_ERROR(InitializeFrameInfo(cc));
     }
-    MP_RETURN_IF_ERROR(ValidateImageFormats());
+    ABSL_RETURN_IF_ERROR(ValidateImageFormats());
   } else {
     if (input_width_ != image_frame.Width() ||
         input_height_ != image_frame.Height()) {
@@ -517,6 +524,9 @@ absl::Status ScaleImageCalculator::ValidateImageFrame(
 
 absl::Status ScaleImageCalculator::ValidateYUVImage(CalculatorContext* cc,
                                                     const YUVImage& yuv_image) {
+  if (yuv_image.width() == 0 || yuv_image.height() == 0) {
+    return absl::InvalidArgumentError("Input YUV image frame is empty.");
+  }
   ABSL_CHECK_EQ(input_format_, ImageFormat::YCBCR420P);
   if (!has_header_) {
     if (input_width_ != yuv_image.width() ||
@@ -532,9 +542,9 @@ absl::Status ScaleImageCalculator::ValidateYUVImage(CalculatorContext* cc,
       } else {
         output_format_ = input_format_;
       }
-      MP_RETURN_IF_ERROR(InitializeFrameInfo(cc));
+      ABSL_RETURN_IF_ERROR(InitializeFrameInfo(cc));
     }
-    MP_RETURN_IF_ERROR(ValidateImageFormats());
+    ABSL_RETURN_IF_ERROR(ValidateImageFormats());
   } else {
     if (input_width_ != yuv_image.width() ||
         input_height_ != yuv_image.height()) {
@@ -560,7 +570,7 @@ absl::Status ScaleImageCalculator::Process(CalculatorContext* cc) {
       options_.MergeFrom(cc->Inputs()
                              .Tag("OVERRIDE_OPTIONS")
                              .Get<ScaleImageCalculatorOptions>());
-      MP_RETURN_IF_ERROR(InitializeFromOptions());
+      ABSL_RETURN_IF_ERROR(InitializeFromOptions());
     }
     if (cc->Inputs().UsesTags() && cc->Inputs().HasTag("VIDEO_HEADER") &&
         !cc->Inputs().Tag("VIDEO_HEADER").IsEmpty()) {
@@ -576,7 +586,7 @@ absl::Status ScaleImageCalculator::Process(CalculatorContext* cc) {
   if (input_format_ == ImageFormat::YCBCR420P) {
     const YUVImage* yuv_image =
         &cc->Inputs().Get(input_data_id_).Get<YUVImage>();
-    MP_RETURN_IF_ERROR(ValidateYUVImage(cc, *yuv_image));
+    ABSL_RETURN_IF_ERROR(ValidateYUVImage(cc, *yuv_image));
 
     if (output_format_ == ImageFormat::SRGB) {
       // TODO: For ease of implementation, YUVImage is converted to
@@ -600,21 +610,26 @@ absl::Status ScaleImageCalculator::Process(CalculatorContext* cc) {
       // Scale the YUVImage and output without converting the color space.
       const int y_size = output_width_ * output_height_;
       const int uv_size = output_width_ * output_height_ / 4;
-      std::unique_ptr<uint8_t[]> yuv_data(new uint8_t[y_size + uv_size * 2]);
-      uint8_t* y = yuv_data.get();
-      uint8_t* u = y + y_size;
-      uint8_t* v = u + uv_size;
-      RET_CHECK_EQ(0, I420Scale(yuv_image->data(0), yuv_image->stride(0),
-                                yuv_image->data(1), yuv_image->stride(1),
-                                yuv_image->data(2), yuv_image->stride(2),
-                                yuv_image->width(), yuv_image->height(), y,
-                                output_width_, u, output_width_ / 2, v,
-                                output_width_ / 2, output_width_,
-                                output_height_, libyuv::kFilterBox));
-      auto output_image = absl::make_unique<YUVImage>(
-          libyuv::FOURCC_I420, std::move(yuv_data), y, output_width_, u,
-          output_width_ / 2, v, output_width_ / 2, output_width_,
-          output_height_);
+      const size_t total_size = y_size + uv_size * 2;
+      std::unique_ptr<uint8_t[]> yuv_data(new uint8_t[total_size]);
+      absl::Span<uint8_t> yuv_span(yuv_data.get(), total_size);
+      absl::Span<uint8_t> y = yuv_span.subspan(0, y_size);
+      absl::Span<uint8_t> u = yuv_span.subspan(y_size, uv_size);
+      absl::Span<uint8_t> v = yuv_span.subspan(y_size + uv_size, uv_size);
+      RET_CHECK_EQ(
+          0, I420Scale(yuv_image->data(0), yuv_image->stride(0),
+                       yuv_image->data(1), yuv_image->stride(1),
+                       yuv_image->data(2), yuv_image->stride(2),
+                       yuv_image->width(), yuv_image->height(), y.data(),
+                       output_width_, u.data(), output_width_ / 2, v.data(),
+                       output_width_ / 2, output_width_, output_height_,
+                       libyuv::kFilterBox));
+      auto output_image = std::make_unique<YUVImage>();
+      output_image->Initialize(
+          libyuv::FOURCC_I420,
+          [data = std::move(yuv_data)]() mutable { data.reset(); }, y,
+          output_width_, u, output_width_ / 2, v, output_width_ / 2,
+          output_width_, output_height_);
       cc->GetCounter("Outputs Scaled")->Increment();
       if (yuv_image->width() >= output_width_ &&
           yuv_image->height() >= output_height_) {
@@ -629,7 +644,7 @@ absl::Status ScaleImageCalculator::Process(CalculatorContext* cc) {
     }
   } else {
     image_frame = &cc->Inputs().Get(input_data_id_).Get<ImageFrame>();
-    MP_RETURN_IF_ERROR(ValidateImageFrame(cc, *image_frame));
+    ABSL_RETURN_IF_ERROR(ValidateImageFrame(cc, *image_frame));
     if (input_format_ == ImageFormat::SRGB &&
         output_format_ == ImageFormat::SRGBA) {
       cv::Mat input_mat = ::mediapipe::formats::MatView(image_frame);

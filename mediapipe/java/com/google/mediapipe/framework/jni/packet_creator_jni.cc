@@ -139,8 +139,8 @@ absl::StatusOr<mediapipe::GpuBuffer> CreateGpuBuffer(
         absl::StrCat("Unsupported OpenGL texture format: ", format));
   }
 
-  MP_ASSIGN_OR_RETURN(WrapExternalGlTextureSyncMode wrap_sync_mode,
-                      ParseSyncMode(sync_mode));
+  ABSL_ASSIGN_OR_RETURN(WrapExternalGlTextureSyncMode wrap_sync_mode,
+                        ParseSyncMode(sync_mode));
 
   return WrapExternalGlTexture(*gpu_resources, GL_TEXTURE_2D, name, width,
                                height, gpu_buffer_format,
@@ -181,6 +181,11 @@ CreateImageFrameFromByteBuffer(JNIEnv* env, jobject byte_buffer, jint width,
 }
 
 }  // namespace
+
+JNIEXPORT jlong JNICALL PACKET_CREATOR_METHOD(nativeCreateEmpty)(
+    JNIEnv* env, jobject thiz, jlong context) {
+  return CreatePacketWithContext(context, mediapipe::Packet());
+}
 
 JNIEXPORT jlong JNICALL PACKET_CREATOR_METHOD(nativeCreateReferencePacket)(
     JNIEnv* env, jobject thiz, jlong context, jlong packet) {
@@ -411,6 +416,31 @@ JNIEXPORT jlong JNICALL PACKET_CREATOR_METHOD(nativeCreateMatrix)(
   return CreatePacketWithContext(context, packet);
 }
 
+JNIEXPORT jlong JNICALL PACKET_CREATOR_METHOD(nativeCreateMatrixDirect)(
+    JNIEnv* env, jobject thiz, jlong context, jint rows, jint cols,
+    jobject data) {
+  const float* float_data =
+      reinterpret_cast<const float*>(env->GetDirectBufferAddress(data));
+  int64_t capacity = env->GetDirectBufferCapacity(data);
+  if (!float_data || capacity < 0) {
+    ThrowIfError(env, absl::InvalidArgumentError(
+                          "Cannot get direct access to the input buffer. It "
+                          "should be created using allocateDirect."));
+    return 0L;
+  }
+  int64_t required_size = static_cast<int64_t>(rows) * cols * sizeof(float);
+  if (capacity < required_size) {
+    ThrowIfError(env, absl::InvalidArgumentError(
+                          "Buffer capacity is too small for the requested "
+                          "matrix size."));
+    return 0L;
+  }
+  auto matrix = std::make_unique<mediapipe::Matrix>(rows, cols);
+  std::memcpy(matrix->data(), float_data, required_size);
+  mediapipe::Packet packet = mediapipe::Adopt(matrix.release());
+  return CreatePacketWithContext(context, packet);
+}
+
 JNIEXPORT jlong JNICALL PACKET_CREATOR_METHOD(nativeCreateCpuImage)(
     JNIEnv* env, jobject thiz, jlong context, jobject byte_buffer, jint width,
     jint height, jint width_step, jint num_channels) {
@@ -501,7 +531,7 @@ JNIEXPORT jlong JNICALL PACKET_CREATOR_METHOD(nativeCreateFloat32Vector)(
   // floats), but on all architectures we care about this is a float.
   static_assert(std::is_same<float, jfloat>::value, "jfloat must be float");
   std::unique_ptr<std::vector<float>> floats =
-      absl::make_unique<std::vector<float>>(data_ref, data_ref + count);
+      std::make_unique<std::vector<float>>(data_ref, data_ref + count);
 
   env->ReleaseFloatArrayElements(data, data_ref, JNI_ABORT);
   mediapipe::Packet packet = mediapipe::Adopt(floats.release());

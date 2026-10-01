@@ -48,8 +48,9 @@ bzl_library(
         "//mediapipe/framework:transitive_protos_bzl",
         "//mediapipe/framework/deps:descriptor_set_bzl",
         "//mediapipe/framework/deps:expand_template_bzl",
-        "@org_tensorflow//tensorflow/lite/core/shims:cc_library_with_tflite_bzl",
-        "@rules_cc//cc:core_rules",
+        "@litert//tflite/core/shims:cc_library_with_tflite_bzl",
+        "@rules_cc//cc:action_names_bzl",
+        "@rules_cc//cc:find_cc_toolchain_bzl",
     ],
 )
 
@@ -826,6 +827,8 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/time",
+        "@com_google_googletest//:gtest",
         "@stblib//:stb_image",
         "@stblib//:stb_image_write",
     ],

@@ -38,13 +38,14 @@ limitations under the License.
 #include "mediapipe/tasks/cc/core/mediapipe_builtin_op_resolver.h"
 #include "mediapipe/tasks/cc/core/proto/base_options.pb.h"
 #include "mediapipe/tasks/cc/core/proto/external_file.pb.h"
+#include "mediapipe/tasks/cc/core/running_mode.h"
 #include "mediapipe/tasks/cc/core/task_runner.h"
 #include "mediapipe/tasks/cc/vision/hand_detector/proto/hand_detector_graph_options.pb.h"
 #include "mediapipe/tasks/cc/vision/hand_landmarker/proto/hand_landmarker_graph_options.pb.h"
 #include "mediapipe/tasks/cc/vision/hand_landmarker/proto/hand_landmarks_detector_graph_options.pb.h"
 #include "mediapipe/tasks/cc/vision/utils/image_utils.h"
-#include "tensorflow/lite/c/common.h"
-#include "tensorflow/lite/test_util.h"
+#include "tflite/c/common.h"
+#include "tflite/test_util.h"
 
 namespace mediapipe {
 namespace tasks {
@@ -135,8 +136,10 @@ absl::StatusOr<std::unique_ptr<TaskRunner>> CreateTaskRunner() {
           .SetName(kHandRectNextFrameName) >>
       graph[Output<std::vector<NormalizedRect>>(kHandRectNextFrameTag)];
   return TaskRunner::Create(
-      graph.GetConfig(), "hand_landmarker_test", "image",
-      absl::make_unique<core::MediaPipeBuiltinOpResolver>());
+      {.config = graph.GetConfig(),
+       .task_name = "hand_landmarker_test",
+       .task_running_mode = core::RunningMode::kImage,
+       .op_resolver = std::make_unique<core::MediaPipeBuiltinOpResolver>()});
 }
 
 class HandLandmarkerTest : public tflite::testing::Test {};

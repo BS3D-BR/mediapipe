@@ -40,18 +40,18 @@ _AsyncResultDispatcher = async_result_dispatcher.AsyncResultDispatcher
 _LiveStreamPacket = async_result_dispatcher.LiveStreamPacket
 
 
-class HolisticLandmarkerResultC(ctypes.Structure):
-  """The ctypes struct for HolisticLandmarkerResult."""
+class MpHolisticLandmarkerResultC(ctypes.Structure):
+  """The ctypes struct for MpHolisticLandmarkerResult."""
 
   _fields_ = [
-      ('face_landmarks', landmark_c_lib.NormalizedLandmarksC),
-      ('pose_landmarks', landmark_c_lib.NormalizedLandmarksC),
-      ('pose_world_landmarks', landmark_c_lib.LandmarksC),
-      ('left_hand_landmarks', landmark_c_lib.NormalizedLandmarksC),
-      ('right_hand_landmarks', landmark_c_lib.NormalizedLandmarksC),
-      ('left_hand_world_landmarks', landmark_c_lib.LandmarksC),
-      ('right_hand_world_landmarks', landmark_c_lib.LandmarksC),
-      ('face_blendshapes', category_c_lib.CategoriesC),
+      ('face_landmarks', landmark_c_lib.MpNormalizedLandmarksC),
+      ('pose_landmarks', landmark_c_lib.MpNormalizedLandmarksC),
+      ('pose_world_landmarks', landmark_c_lib.MpLandmarksC),
+      ('left_hand_landmarks', landmark_c_lib.MpNormalizedLandmarksC),
+      ('right_hand_landmarks', landmark_c_lib.MpNormalizedLandmarksC),
+      ('left_hand_world_landmarks', landmark_c_lib.MpLandmarksC),
+      ('right_hand_world_landmarks', landmark_c_lib.MpLandmarksC),
+      ('face_blendshapes', category_c_lib.MpCategoriesC),
       ('pose_segmentation_mask', ctypes.c_void_p),
   ]
 
@@ -59,7 +59,7 @@ class HolisticLandmarkerResultC(ctypes.Structure):
 _C_TYPES_RESULT_CALLBACK = ctypes.CFUNCTYPE(
     None,
     ctypes.c_int32,  # MpStatus
-    ctypes.POINTER(HolisticLandmarkerResultC),
+    ctypes.POINTER(MpHolisticLandmarkerResultC),
     ctypes.c_void_p,  # MpImage
     ctypes.c_int64,  # timestamp_ms
 )
@@ -98,7 +98,7 @@ class HolisticLandmarkerResult:
   @classmethod
   @doc_controls.do_not_generate_docs
   def from_ctypes(
-      cls, c_struct: HolisticLandmarkerResultC
+      cls, c_struct: MpHolisticLandmarkerResultC
   ) -> 'HolisticLandmarkerResult':
     """Creates a `HolisticLandmarkerResult` object from the given ctypes struct."""
     face_landmarks = [
@@ -170,11 +170,11 @@ class HolisticLandmarkerResult:
     )
 
 
-class HolisticLandmarkerOptionsC(ctypes.Structure):
-  """The ctypes struct for HolisticLandmarkerOptions."""
+class MpHolisticLandmarkerOptionsC(ctypes.Structure):
+  """The ctypes struct for MpHolisticLandmarkerOptions."""
 
   _fields_ = [
-      ('base_options', base_options_c_lib.BaseOptionsC),
+      ('base_options', base_options_c_lib.MpBaseOptionsC),
       ('running_mode', ctypes.c_int),
       ('min_face_detection_confidence', ctypes.c_float),
       ('min_face_suppression_threshold', ctypes.c_float),
@@ -192,7 +192,7 @@ class HolisticLandmarkerOptionsC(ctypes.Structure):
   @doc_controls.do_not_generate_docs
   def from_c_options(
       cls,
-      base_options: base_options_c_lib.BaseOptionsC,
+      base_options: base_options_c_lib.MpBaseOptionsC,
       running_mode: _RunningMode,
       min_face_detection_confidence: float,
       min_face_suppression_threshold: float,
@@ -204,8 +204,8 @@ class HolisticLandmarkerOptionsC(ctypes.Structure):
       output_face_blendshapes: bool,
       output_segmentation_masks: bool,
       result_callback: _C_TYPES_RESULT_CALLBACK,
-  ) -> 'HolisticLandmarkerOptionsC':
-    """Creates a HolisticLandmarkerOptionsC object from the given options."""
+  ) -> 'MpHolisticLandmarkerOptionsC':
+    """Creates a MpHolisticLandmarkerOptionsC object from the given options."""
     return cls(
         base_options=base_options,
         running_mode=running_mode.ctype,
@@ -277,7 +277,7 @@ _CTYPES_SIGNATURES = (
     mediapipe_c_utils.CStatusFunction(
         'MpHolisticLandmarkerCreate',
         (
-            ctypes.POINTER(HolisticLandmarkerOptionsC),
+            ctypes.POINTER(MpHolisticLandmarkerOptionsC),
             ctypes.POINTER(ctypes.c_void_p),
         ),
     ),
@@ -287,9 +287,9 @@ _CTYPES_SIGNATURES = (
             ctypes.c_void_p,
             ctypes.c_void_p,
             ctypes.POINTER(
-                image_processing_options_c_lib.ImageProcessingOptionsC
+                image_processing_options_c_lib.MpImageProcessingOptionsC
             ),
-            ctypes.POINTER(HolisticLandmarkerResultC),
+            ctypes.POINTER(MpHolisticLandmarkerResultC),
         ),
     ),
     mediapipe_c_utils.CStatusFunction(
@@ -298,10 +298,10 @@ _CTYPES_SIGNATURES = (
             ctypes.c_void_p,
             ctypes.c_void_p,
             ctypes.POINTER(
-                image_processing_options_c_lib.ImageProcessingOptionsC
+                image_processing_options_c_lib.MpImageProcessingOptionsC
             ),
             ctypes.c_int64,
-            ctypes.POINTER(HolisticLandmarkerResultC),
+            ctypes.POINTER(MpHolisticLandmarkerResultC),
         ),
     ),
     mediapipe_c_utils.CStatusFunction(
@@ -310,14 +310,14 @@ _CTYPES_SIGNATURES = (
             ctypes.c_void_p,
             ctypes.c_void_p,
             ctypes.POINTER(
-                image_processing_options_c_lib.ImageProcessingOptionsC
+                image_processing_options_c_lib.MpImageProcessingOptionsC
             ),
             ctypes.c_int64,
         ),
     ),
     mediapipe_c_utils.CFunction(
         'MpHolisticLandmarkerCloseResult',
-        [ctypes.POINTER(HolisticLandmarkerResultC)],
+        [ctypes.POINTER(MpHolisticLandmarkerResultC)],
         None,
     ),
     mediapipe_c_utils.CStatusFunction(
@@ -398,12 +398,12 @@ class HolisticLandmarker:
       RuntimeError: If other types of error occurred.
     """
     running_mode_lib.validate_running_mode(
-        options.running_mode, options.result_callback
+        options.running_mode, options.result_callback  # pyrefly: ignore[bad-argument-type]
     )
     lib = mediapipe_c_bindings_lib.load_shared_library(_CTYPES_SIGNATURES)
 
     def convert_result(
-        c_result_ptr: ctypes.POINTER(HolisticLandmarkerResultC),
+        c_result_ptr: ctypes.POINTER(MpHolisticLandmarkerResultC),  # pyrefly: ignore[invalid-annotation]
         image_ptr: ctypes.c_void_p,
         timestamp_ms: int,
     ) -> Tuple[HolisticLandmarkerResult, image_lib.Image, int]:
@@ -416,7 +416,7 @@ class HolisticLandmarker:
     c_callback = dispatcher.wrap_callback(
         options.result_callback, _C_TYPES_RESULT_CALLBACK
     )
-    options_c = HolisticLandmarkerOptionsC.from_c_options(
+    options_c = MpHolisticLandmarkerOptionsC.from_c_options(
         base_options=options.base_options.to_ctypes(),
         running_mode=options.running_mode,
         min_face_detection_confidence=options.min_face_detection_confidence,
@@ -431,7 +431,7 @@ class HolisticLandmarker:
         result_callback=c_callback,
     )
     landmarker = ctypes.c_void_p()
-    lib.MpHolisticLandmarkerCreate(
+    lib.MpHolisticLandmarkerCreate(  # pyrefly: ignore[missing-attribute]
         ctypes.byref(options_c), ctypes.byref(landmarker)
     )
     return HolisticLandmarker(
@@ -462,13 +462,13 @@ class HolisticLandmarker:
       RuntimeError: If holistic landmarker detection failed to run.
     """
     c_image = image._image_ptr  # pylint: disable=protected-access
-    result_c = HolisticLandmarkerResultC()
+    result_c = MpHolisticLandmarkerResultC()
     c_image_processing_options = (
         ctypes.byref(image_processing_options.to_ctypes())
         if image_processing_options
         else None
     )
-    self._lib.MpHolisticLandmarkerDetectImage(
+    self._lib.MpHolisticLandmarkerDetectImage(  # pyrefly: ignore[missing-attribute]
         self._handle,
         c_image,
         c_image_processing_options,
@@ -477,7 +477,7 @@ class HolisticLandmarker:
     try:
       result = HolisticLandmarkerResult.from_ctypes(result_c)
     finally:
-      self._lib.MpHolisticLandmarkerCloseResult(ctypes.byref(result_c))
+      self._lib.MpHolisticLandmarkerCloseResult(ctypes.byref(result_c))  # pyrefly: ignore[missing-attribute]
     return result
 
   def detect_for_video(
@@ -509,13 +509,13 @@ class HolisticLandmarker:
       RuntimeError: If holistic landmarker detection failed to run.
     """
     c_image = image._image_ptr  # pylint: disable=protected-access
-    result_c = HolisticLandmarkerResultC()
+    result_c = MpHolisticLandmarkerResultC()
     c_image_processing_options = (
         ctypes.byref(image_processing_options.to_ctypes())
         if image_processing_options
         else None
     )
-    self._lib.MpHolisticLandmarkerDetectForVideo(
+    self._lib.MpHolisticLandmarkerDetectForVideo(  # pyrefly: ignore[missing-attribute]
         self._handle,
         c_image,
         c_image_processing_options,
@@ -525,7 +525,7 @@ class HolisticLandmarker:
     try:
       result = HolisticLandmarkerResult.from_ctypes(result_c)
     finally:
-      self._lib.MpHolisticLandmarkerCloseResult(ctypes.byref(result_c))
+      self._lib.MpHolisticLandmarkerCloseResult(ctypes.byref(result_c))  # pyrefly: ignore[missing-attribute]
     return result
 
   def detect_async(
@@ -571,7 +571,7 @@ class HolisticLandmarker:
         if image_processing_options
         else None
     )
-    self._lib.MpHolisticLandmarkerDetectAsync(
+    self._lib.MpHolisticLandmarkerDetectAsync(  # pyrefly: ignore[missing-attribute]
         self._handle,
         c_image,
         c_image_processing_options,
@@ -582,8 +582,8 @@ class HolisticLandmarker:
     """Closes the HolisticLandmarker."""
     if not self._handle:
       return
-    self._lib.MpHolisticLandmarkerClose(self._handle)
-    self._handle = None
+    self._lib.MpHolisticLandmarkerClose(self._handle)  # pyrefly: ignore[missing-attribute]
+    self._handle = None  # pyrefly: ignore[bad-assignment]
     self._dispatcher.close()
     self._lib.close()
 

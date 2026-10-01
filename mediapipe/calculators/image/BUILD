@@ -471,6 +471,7 @@ cc_library(
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
         "@libyuv",
     ],
     alwayslink = 1,
@@ -692,7 +693,7 @@ cc_library(
         "//mediapipe/framework/tool:options_util",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/synchronization",
-        "@org_tensorflow//tensorflow/lite:framework",
+        "@litert//tflite:framework",
     ],
     alwayslink = 1,
 )
@@ -938,9 +939,9 @@ cc_library(
         "//mediapipe/framework/formats:image",
         "//mediapipe/framework/formats:image_frame",
         "//mediapipe/framework/formats:yuv_image",
-        "//third_party/libyuv",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings:str_format",
+        "@libyuv",
     ],
     alwayslink = 1,
 )

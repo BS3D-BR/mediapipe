@@ -42,10 +42,11 @@ cc_binary(
     deps = [
         ":mediapipe_tasks_c_version_script.lds",
         "//mediapipe/tasks/c/audio/audio_classifier:audio_classifier_c_lib",
+        "//mediapipe/tasks/c/audio/audio_embedder:audio_embedder_c_lib",
         "//mediapipe/tasks/c/core:common",
-        "//mediapipe/tasks/c/genai/bundler:llm_bundler_utils_c_lib",
-        "//mediapipe/tasks/c/genai/converter:llm_converter_c_lib",
         "//mediapipe/tasks/c/metadata:flatbuffer_api_c_lib",
+        "//mediapipe/tasks/c/retrieval/semantic_retriever:semantic_retriever_lib",
+        "//mediapipe/tasks/c/retrieval/universal_embedder:universal_embedder_lib",
         "//mediapipe/tasks/c/text/language_detector:language_detector_c_lib",
         "//mediapipe/tasks/c/text/text_classifier:text_classifier_c_lib",
         "//mediapipe/tasks/c/text/text_embedder:text_embedder_c_lib",
@@ -58,14 +59,10 @@ cc_binary(
         "//mediapipe/tasks/c/vision/image_classifier:image_classifier_c_lib",
         "//mediapipe/tasks/c/vision/image_embedder:image_embedder_c_lib",
         "//mediapipe/tasks/c/vision/image_segmenter:image_segmenter_c_lib",
-        "//mediapipe/tasks/c/vision/interactive_segmenter:interactive_segmenter_c_lib",
+        "//mediapipe/tasks/c/vision/interactive_segmenter_legacy:interactive_segmenter_legacy_c_lib",
         "//mediapipe/tasks/c/vision/object_detector:object_detector_c_lib",
         "//mediapipe/tasks/c/vision/pose_landmarker:pose_landmarker_c_lib",
-    ] + select({
-        "@platforms//os:windows": [],
-        "//conditions:default": [
-        ],
-    }),
+    ],
 )
 
 # Genrule to provide a consistent libmediapipe.so output in bazel-bin.
@@ -91,4 +88,14 @@ genrule(
     srcs = glob(["prebuilts/darwin_arm64/libmediapipe.dylib"]) or [":mediapipe_source"],
     outs = ["libmediapipe.dylib"],
     cmd = "cp $< $@",
+)
+
+alias(
+    name = "libmediapipe",
+    actual = select({
+        "@platforms//os:windows": ":libmediapipe.dll",
+        "@platforms//os:osx": ":libmediapipe.dylib",
+        "//conditions:default": ":libmediapipe.so",
+    }),
+    visibility = ["//visibility:public"],
 )

@@ -36,8 +36,9 @@ limitations under the License.
 #include "mediapipe/tasks/cc/core/proto/base_options.pb.h"
 #include "mediapipe/tasks/cc/core/proto/external_file.pb.h"
 #include "mediapipe/tasks/cc/core/proto/inference_subgraph.pb.h"
+#include "mediapipe/tasks/cc/core/running_mode.h"
 #include "mediapipe/tasks/cc/core/task_runner.h"
-#include "tensorflow/lite/core/api/op_resolver.h"
+#include "tflite/core/api/op_resolver.h"
 
 namespace mediapipe {
 namespace tasks {
@@ -52,24 +53,15 @@ class TaskApiFactory {
  public:
   TaskApiFactory() = delete;
 
-  inline static constexpr char kUnknownRunningMode[] = "unknown";
+  static constexpr RunningMode kUnknownRunningMode = RunningMode::kUnspecified;
 
   template <typename T, typename Options,
             EnableIfBaseTaskApiSubclass<T> = nullptr>
-  static absl::StatusOr<std::unique_ptr<T>> Create(
-      CalculatorGraphConfig graph_config,
-      std::unique_ptr<tflite::OpResolver> resolver,
-      const std::string& task_name, const std::string& task_running_mode,
-      PacketsCallback packets_callback = nullptr,
-      std::shared_ptr<Executor> default_executor = nullptr,
-      std::optional<PacketMap> input_side_packets = std::nullopt,
-      std::optional<ErrorFn> error_fn = std::nullopt,
-      std::optional<absl::string_view> app_id = std::nullopt,
-      std::optional<absl::string_view> app_version = std::nullopt) {
+  static absl::StatusOr<std::unique_ptr<T>> Create(TaskRunnerOptions options) {
     bool found_task_subgraph = false;
     // This for-loop ensures there's only one subgraph besides
     // FlowLimiterCalculator.
-    for (const auto& node : graph_config.node()) {
+    for (const auto& node : options.config.node()) {
       if (node.calculator() == "FlowLimiterCalculator") {
         continue;
       }
@@ -79,27 +71,12 @@ class TaskApiFactory {
             "Task graph config should only contain one task subgraph node.",
             MediaPipeTasksStatus::kInvalidTaskGraphConfigError);
       } else {
-        MP_RETURN_IF_ERROR(CheckHasValidOptions<Options>(node));
+        ABSL_RETURN_IF_ERROR(CheckHasValidOptions<Options>(node));
         found_task_subgraph = true;
       }
     }
-    MP_ASSIGN_OR_RETURN(
-        auto runner,
-#if !MEDIAPIPE_DISABLE_GPU
-        core::TaskRunner::Create(
-            std::move(graph_config), task_name, task_running_mode,
-            std::move(resolver), std::move(packets_callback),
-            std::move(default_executor), std::move(input_side_packets),
-            /*resources=*/nullptr, std::move(error_fn),
-            /*disable_default_service=*/false, app_id, app_version));
-#else
-        core::TaskRunner::Create(
-            std::move(graph_config), task_name, task_running_mode,
-            std::move(resolver), std::move(packets_callback),
-            std::move(default_executor), std::move(input_side_packets),
-            std::move(error_fn),
-            /*disable_default_service=*/false, app_id, app_version));
-#endif
+    ABSL_ASSIGN_OR_RETURN(auto runner,
+                          core::TaskRunner::Create(std::move(options)));
     return std::make_unique<T>(std::move(runner));
   }
 

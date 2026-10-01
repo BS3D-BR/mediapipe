@@ -26,6 +26,7 @@ import mediapipe.tasks.python.vision.image_classifier
 import mediapipe.tasks.python.vision.image_embedder
 import mediapipe.tasks.python.vision.image_segmenter
 import mediapipe.tasks.python.vision.interactive_segmenter
+import mediapipe.tasks.python.vision.interactive_segmenter_legacy
 import mediapipe.tasks.python.vision.object_detector
 import mediapipe.tasks.python.vision.pose_landmarker
 
@@ -59,7 +60,12 @@ ImageSegmenterOptions = image_segmenter.ImageSegmenterOptions
 ImageProcessingOptions = core.image_processing_options.ImageProcessingOptions
 InteractiveSegmenter = interactive_segmenter.InteractiveSegmenter
 InteractiveSegmenterOptions = interactive_segmenter.InteractiveSegmenterOptions
-InteractiveSegmenterRegionOfInterest = interactive_segmenter.RegionOfInterest
+InteractiveSegmenterBrushMode = interactive_segmenter.BrushMode
+InteractiveSegmenterStrokePoint = interactive_segmenter.StrokePoint
+InteractiveSegmenterStroke = interactive_segmenter.Stroke
+InteractiveSegmenterLegacy = interactive_segmenter_legacy.InteractiveSegmenterLegacy
+InteractiveSegmenterLegacyOptions = interactive_segmenter_legacy.InteractiveSegmenterLegacyOptions
+InteractiveSegmenterLegacyRegionOfInterest = interactive_segmenter_legacy.RegionOfInterest
 ObjectDetector = object_detector.ObjectDetector
 ObjectDetectorOptions = object_detector.ObjectDetectorOptions
 ObjectDetectorResult = object_detector.ObjectDetectorResult
@@ -82,6 +88,7 @@ del image_classifier
 del image_embedder
 del image_segmenter
 del interactive_segmenter
+del interactive_segmenter_legacy
 del object_detector
 del pose_landmarker
 del mediapipe

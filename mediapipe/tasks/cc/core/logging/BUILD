@@ -14,31 +14,23 @@
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
-package(default_visibility = [
-    "//mediapipe/tasks/cc/core:__subpackages__",
-])
-
-cc_library(
-    name = "logging_client",
-    hdrs = ["logging_client.h"],
-    deps = [
-        "//mediapipe/util/analytics:mediapipe_log_extension_cc_proto",
-    ],
-)
+package(default_visibility = ["//mediapipe/tasks:internal"])
 
 cc_library(
     name = "tasks_dummy_logger",
     hdrs = ["tasks_dummy_logger.h"],
     deps = [
-        ":logging_client",
         ":tasks_logger",
         "//mediapipe/framework:timestamp",
-        "@com_google_absl//absl/strings:string_view",
     ],
 )
 
 cc_library(
     name = "tasks_logger",
     hdrs = ["tasks_logger.h"],
-    deps = ["//mediapipe/framework:timestamp"],
+    deps = [
+        "//mediapipe/framework:timestamp",
+        "//mediapipe/tasks/cc/core:host_environment",
+        "//mediapipe/tasks/cc/core:running_mode",
+    ],
 )

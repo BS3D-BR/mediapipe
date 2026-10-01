@@ -280,17 +280,23 @@ absl::StatusOr<std::unique_ptr<HolisticLandmarker>> HolisticLandmarker::Create(
               kMicroSecondsPerMilliSecond);
     };
   }
-  MP_ASSIGN_OR_RETURN(
+  ABSL_ASSIGN_OR_RETURN(
       auto landmarker,
       (core::VisionTaskApiFactory::Create<HolisticLandmarker,
                                           HolisticLandmarkerGraphOptionsProto>(
-          CreateGraphConfig(
-              std::move(options_proto),
-              options->running_mode == core::RunningMode::LIVE_STREAM),
-          kTaskName, std::move(options->base_options.op_resolver),
-          options->running_mode, std::move(packets_callback),
-          /*disable_default_service=*/
-          options->base_options.disable_default_service)));
+          {.config = CreateGraphConfig(
+               std::move(options_proto),
+               options->running_mode == core::RunningMode::LIVE_STREAM),
+           .task_name = kTaskName,
+           .task_running_mode = core::GetCoreRunningMode(options->running_mode),
+           .op_resolver = std::move(options->base_options.op_resolver),
+           .packets_callback = std::move(packets_callback),
+           .disable_default_service =
+               options->base_options.disable_default_service,
+           .host_environment = options->base_options.host_environment,
+           .host_system = options->base_options.host_system,
+           .host_version = options->base_options.host_version,
+           .ca_bundle_path = options->base_options.ca_bundle_path})));
   landmarker->output_pose_segmentation_masks_ =
       options->output_pose_segmentation_masks;
   landmarker->output_face_blendshapes_ = options->output_face_blendshapes;
@@ -307,7 +313,7 @@ absl::StatusOr<HolisticLandmarkerResult> HolisticLandmarker::Detect(
         "This task doesn't support region-of-interest.",
         MediaPipeTasksStatus::kImageProcessingInvalidArgumentError);
   }
-  MP_ASSIGN_OR_RETURN(
+  ABSL_ASSIGN_OR_RETURN(
       auto output_packets,
       ProcessImageData(
           {{kImageInStreamName, MakePacket<Image>(std::move(image))}}));
@@ -327,7 +333,7 @@ absl::StatusOr<HolisticLandmarkerResult> HolisticLandmarker::DetectForVideo(
         "This task doesn't support region-of-interest.",
         MediaPipeTasksStatus::kImageProcessingInvalidArgumentError);
   }
-  MP_ASSIGN_OR_RETURN(
+  ABSL_ASSIGN_OR_RETURN(
       auto output_packets,
       ProcessVideoData(
           {{kImageInStreamName,

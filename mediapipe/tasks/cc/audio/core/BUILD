@@ -21,6 +21,12 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "running_mode",
     hdrs = ["running_mode.h"],
+    deps = [
+        "//mediapipe/tasks/cc/core:running_mode",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
 )
 
 cc_library(
@@ -52,6 +58,6 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@org_tensorflow//tensorflow/lite/core/api:op_resolver",
+        "@litert//tflite/core/api:op_resolver",
     ],
 )

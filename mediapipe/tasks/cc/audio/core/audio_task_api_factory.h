@@ -32,7 +32,7 @@ limitations under the License.
 #include "mediapipe/tasks/cc/audio/core/running_mode.h"
 #include "mediapipe/tasks/cc/core/task_api_factory.h"
 #include "mediapipe/tasks/cc/core/task_runner.h"
-#include "tensorflow/lite/core/api/op_resolver.h"
+#include "tflite/core/api/op_resolver.h"
 
 namespace mediapipe {
 namespace tasks {
@@ -51,13 +51,9 @@ class AudioTaskApiFactory {
   template <typename T, typename Options,
             EnableIfBaseAudioTaskApiSubclass<T> = nullptr>
   static absl::StatusOr<std::unique_ptr<T>> Create(
-      CalculatorGraphConfig graph_config, const std::string& task_name,
-      std::unique_ptr<tflite::OpResolver> resolver, RunningMode running_mode,
-      tasks::core::PacketsCallback packets_callback = nullptr,
-      std::optional<std::string> app_id = std::nullopt,
-      std::optional<std::string> app_version = std::nullopt) {
+      tasks::core::TaskRunnerOptions options) {
     bool found_task_subgraph = false;
-    for (const auto& node : graph_config.node()) {
+    for (const auto& node : options.config.node()) {
       if (node.calculator() == "FlowLimiterCalculator") {
         continue;
       }
@@ -67,39 +63,30 @@ class AudioTaskApiFactory {
             "Task graph config should only contain one task subgraph node.",
             MediaPipeTasksStatus::kInvalidTaskGraphConfigError);
       } else {
-        MP_RETURN_IF_ERROR(
+        ABSL_RETURN_IF_ERROR(
             tasks::core::TaskApiFactory::CheckHasValidOptions<Options>(node));
         found_task_subgraph = true;
       }
     }
+    ABSL_ASSIGN_OR_RETURN(RunningMode running_mode,
+                          GetAudioRunningMode(options.task_running_mode));
     if (running_mode == RunningMode::AUDIO_STREAM) {
-      if (packets_callback == nullptr) {
+      if (options.packets_callback == nullptr) {
         return CreateStatusWithPayload(
             absl::StatusCode::kInvalidArgument,
             "The audio task is in audio stream mode, a user-defined result "
             "callback must be provided.",
             MediaPipeTasksStatus::kInvalidTaskGraphConfigError);
       }
-    } else if (packets_callback) {
+    } else if (options.packets_callback) {
       return CreateStatusWithPayload(
           absl::StatusCode::kInvalidArgument,
           "The audio task is in audio clips mode, a user-defined result "
           "callback shouldn't be provided.",
           MediaPipeTasksStatus::kInvalidTaskGraphConfigError);
     }
-    MP_ASSIGN_OR_RETURN(
-        auto runner,
-        tasks::core::TaskRunner::Create(
-            std::move(graph_config), task_name,
-            GetRunningModeName(running_mode), std::move(resolver),
-            std::move(packets_callback),
-            /*default_executor=*/nullptr,
-            /*input_side_packets=*/std::nullopt,
-#if !MEDIAPIPE_DISABLE_GPU
-            /*resources=*/nullptr,
-#endif
-            /*error_fn=*/std::nullopt,
-            /*disable_default_service=*/false, app_id, app_version));
+    ABSL_ASSIGN_OR_RETURN(auto runner,
+                          tasks::core::TaskRunner::Create(std::move(options)));
     return std::make_unique<T>(std::move(runner), running_mode);
   }
 };
